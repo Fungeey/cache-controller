@@ -7,7 +7,7 @@ entity cache is -- the ports of the cache controller
 	Port    (   
                 --inputs
                 clk 		: in    STD_LOGIC;
-				reset		: in    STD_LOGIC;
+				rst		    : in    STD_LOGIC;
 				addr_in		: in 	STD_LOGIC_VECTOR(15 downto 0);
                 cs          : in    STD_LOGIC;
                 --wr/rdy      : in      STD_LOGIC;
