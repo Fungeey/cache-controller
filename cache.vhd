@@ -10,17 +10,22 @@ entity cache is -- the ports of the cache controller
 				reset		: in    STD_LOGIC;
 				addr_in		: in 	STD_LOGIC_VECTOR(15 downto 0);
                 cs          : in    STD_LOGIC;
+                --wr/rdy      : in      STD_LOGIC;
 
                 --outputs
-                memstrb     : out   STD_LOGIC;
                 rdy         : out   STD_LOGIC;
+
+                -- to SDRAM controller
+                memstrb     : out   STD_LOGIC;
                 wen         : out   STD_LOGIC;
+                addr_out    : out   STD_LOGIC_VECTOR(15 downto 0);
+                --wr/rdy      : in      STD_LOGIC;
 
                 -- to SRAM
                 din_mux     : out   STD_LOGIC;
                 dout_mux    : out   STD_LOGIC;
-
-                );
+                addr_out2   : out  STD_LOGIC_VECTOR(7 downto 0);
+                --wen          : out    STD_LOGIC);
 end cache;
 
 architecture Behavioral of cache is
