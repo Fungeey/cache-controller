@@ -16,3 +16,20 @@ entity SDRAMController is -- the ports of the SDRAM controller
 
                 dout        : out   STD_LOGIC_VECTOR(7 downto 0));
 end SDRAMController;
+
+architecture Behavioral of SDRAMController is
+
+--components and signals goes here
+
+
+begin
+
+    --port map?
+    
+    process (clk)
+        begin
+
+
+    end process;
+
+end Behavioral;

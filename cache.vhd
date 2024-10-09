@@ -41,4 +41,10 @@ begin
     --port map?
     
     process (clk)
-    begin
+        begin
+
+
+
+
+    end process;
+end Behavioral;
