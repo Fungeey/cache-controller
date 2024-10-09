@@ -3,8 +3,8 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
-entity cache is -- the ports of the cache controller
-	Port    (   
+entity cache is 
+	Port    (   -- the ports of the cache controller
                 --inputs
                 clk 		: in    STD_LOGIC;
 				rst		    : in    STD_LOGIC;
