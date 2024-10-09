@@ -140,7 +140,7 @@ begin
 
 	ila_data(7 downto 0) <= bram_din;
 	ila_data(15 downto 8) <= bram_dout;
-	ila_data(23 downto 16) <=bram_addr;
+	ila_data(23 downto 16) <= bram_addr;
 	ila_data(31 downto 24) <= counter(7 downto 0);
 	
 	bram_addr <= vio_out (15 downto 8);
