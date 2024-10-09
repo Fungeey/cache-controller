@@ -1,0 +1,18 @@
+#clock signals
+net "clk" loc = "C9";
+
+#LED Outputs
+net "led<0>" loc = "F12";
+net "led<1>" loc = "E12";
+net "led<2>" loc = "E11";
+net "led<3>" loc = "F11";
+net "led<4>" loc = "C11";
+net "led<5>" loc = "D11";
+net "led<6>" loc = "E9";
+net "led<7>" loc = "F9";
+
+#Switch Inputs
+net "switches<0>" loc = "L13";
+net "switches<1>" loc = "L14";
+net "switches<2>" loc = "H16";
+net "switches<3>" loc = "N17";
