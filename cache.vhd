@@ -6,9 +6,9 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity cache is 
 	Port(   -- the ports of the cache controller
     --inputs
-    clk 		    : in    STD_LOGIC;
-	rst		        : in    STD_LOGIC;
-	addr_in		    : in 	  STD_LOGIC_VECTOR(15 downto 0);
+    clk 		        : in    STD_LOGIC;
+	  rst		          : in    STD_LOGIC;
+	  addr_in		      : in 	  STD_LOGIC_VECTOR(15 downto 0);
     wr_rd_in        : in   STD_LOGIC;
     cs              : in    STD_LOGIC;
 
