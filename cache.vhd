@@ -16,7 +16,7 @@ entity cache is
     rdy             : out   STD_LOGIC;
 
     -- to SDRAM controller
-    addr_out        : out   STD_LOGIC_VECTOR(15 downto 0);
+    addr_out1       : out   STD_LOGIC_VECTOR(15 downto 0);
     wr_rd_out       : out   STD_LOGIC;
     memstrb         : out   STD_LOGIC;
 
@@ -39,10 +39,14 @@ architecture Behavioral of cache is --components and signals goes here
   signal offset : std_logic_vector(4 downto 0);
 
   -- Local SRAM Table (stores 32 1-byte words)
-  signal table_index  : std_logic_vector(32 downto 0);
-  signal table_valid  : std_logic_vector(32 downto 0);
-  signal table_dirty  : std_logic_vector(32 downto 0);
-  signal table_tag    : std_logic_vector(32 downto 0);
+  type index_array is array (0 to 8) of std_logic_vector(2 downto 0);
+  signal table_index  : index_array;
+
+  type tag_array is array (0 to 8) of std_logic_vector(8 downto 0);
+  signal table_tag    : tag_array;
+
+  signal table_valid  : std_logic_vector(8 downto 0);
+  signal table_dirty  : std_logic_vector(8 downto 0);
 
   -- FSM control unit
   signal state_current : std_logic_vector(2 downto 0) := "000";
@@ -52,8 +56,13 @@ architecture Behavioral of cache is --components and signals goes here
 begin
 
   -- address decoder
-  addressDecoder: process(addr_in, tag, index)
-    
+  addressDecoder: process(addr_in, cs)
+  begin
+    if(cs'event and cs = '1') then
+      tag <= addr_in(15 downto 8);
+      index <= addr_in(7 downto 5);
+      offset <= addr_in(4 downto 0);
+    end if;
   end process;
 
   -- FSM: control unit, 6 states.
@@ -65,45 +74,104 @@ begin
   end process;
 
   -- FSM: Next state generation.
-  nextStateGen : process(state_current, rst, match16, match24, match30)
+  nextStateGen : process(state_current, tag, index, offset)
   begin
     if(state_current = "000")then     -- S0: Idle
-        -- cs probe
-    elsif(state_current = "001")then  -- S1: Miss
-        -- 
-    elsif(state_current = "010")then  -- S2: Dirty Miss 
+      -- compare if tags are same
+      if(tag == table_tag(to_integer(unsigned(index)))) then
+        state_next <= "011"; -- Hit
+      else 
+        -- Check dirty bit
+        if(table_dirty(to_integer(unsigned(index))) == '0') then
+          state_next <= "001"; -- Miss
+        else
+          state_next <= "010"; -- Dirty Miss
+        end if;
+      end if;
+
+    elsif(state_current = "001")then  -- S1: Dirty Miss
+      -- don't move on until finished data transfer
+      state_next <= "010"; -- go into miss
+
+    elsif(state_current = "010")then  -- S2: Miss 
+      -- don't move on until finished data transfer
+      state_next <= "011"; -- become hit  
 
     elsif(state_current = "011")then  -- S3: Hit
-        if (wr_rd_in = '1') then
-                
-                --write
+        if (wr_rd_in = '1') then      
+          state_next <= "101"; -- write
         else 
-                
-                -- read
+          state_next <= "100"; -- read
         end if;
-    elsif(state_current = "100")then  -- S4: Read
 
+    elsif(state_current = "100")then  -- S4: Read
+      state_next <= "000";
     elsif(state_current = "101")then  -- S5: Write
       state_next <= "000";
-    else
-      state_next <= "000";
+    else                              
+      state_next <= "000";            -- default / reset (idle)
     end if;
   end process;
 
   -- FSM: Output generation.
   outGen: process(state_current)
   begin
-    if(state_current = "000")then     -- S0: Idle
-        
-    elsif(state_current = "001")then  -- S1: Miss
+    if(state_current = "000") then     -- S0: Idle
+      ready <= '1';
 
-    elsif(state_current = "010")then  -- S2: Dirty Miss
+    elsif(state_current = "001") then  -- S1: Dirty Miss
+      ready <= '0';
+
+      -- on first run of this state: send offset as 0
+      addr_out1(15 downto 8) <= tag;
+      addr_out1(7 downto 5) <= index;
+      addr_out1(4 downto 0) <= "00000";
+      wr_rd_out <= '1'; -- write
+      dout_mux <= '0';
+      din_mux <= '1';
+      wen <= '0';
+
+      -- repeat 32 times: send data from SRAM to SDRAM
+
+    elsif(state_current = "010")then  -- S2: Miss
+      ready <= '0';
+      -- on first run of this state: send offset as 0
+      table_valid(to_integer(unsigned(index))) <= '1';
+      addr_out2(7 downto 5) <= index;
+      addr_out2(4 downto 0) <= "00000";
+      wr_rd_out <= '0' -- read
+      din_mux <= '1';
+      wen <= '1';
+    
+      -- repeat 32 times: wait for MSTRB high, then store data from SDRAM into SRAM
+
+      -- once done, update tag in the table
+      table_tag(to_integer(unsigned(index))) <= tag;
 
     elsif(state_current = "011")then  -- S3: Hit
+      ready <= '0';
+      -- shouldn't output anything
 
     elsif(state_current = "100")then  -- S4: Read
+      ready <= '0';
+
+      -- SRAM to CPU
+      dout_mux <= '1';
+      din_mux <= '0';
+      wen <= '0';
+      addr_out2(7 downto 5) <= index;
+      addr_out2(4 downto 0) <= offset;
 
     elsif(state_current = "101")then  -- S5: Write
+      ready <= '0';
+
+      -- CPU to SRAM
+      din_mux <= '0';
+      wen <= '1';
+      table_dirty(to_integer(unsigned(index))) <= '1';
+      table_valid(to_integer(unsigned(index))) <= '1';
+      addr_out2(7 downto 5) <= index;
+      addr_out2(4 downto 0) <= offset;
 
     else                              -- default / reset (idle)
 
