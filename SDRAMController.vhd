@@ -10,7 +10,7 @@ entity SDRAMController is -- the ports of the SDRAM controller
 				rst		    : in    STD_LOGIC;
 				
                 addr_in		: in 	STD_LOGIC_VECTOR(15 downto 0);
-                --wr/rdy        : in    STD_LOGIC;
+                wr_rd       : in    STD_LOGIC;
                 memstrb     : in    STD_LOGIC;
                 din         : in    STD_LOGIC_VECTOR(7 downto 0);
 

@@ -6,26 +6,27 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 entity cache is 
 	Port(   -- the ports of the cache controller
     --inputs
-    clk 		  : in    STD_LOGIC;
-		rst		    : in    STD_LOGIC;
-		addr_in		: in 	  STD_LOGIC_VECTOR(15 downto 0);
-    cs        : in    STD_LOGIC;
+    clk 		    : in    STD_LOGIC;
+	rst		        : in    STD_LOGIC;
+	addr_in		    : in 	  STD_LOGIC_VECTOR(15 downto 0);
+    wr_rd_in        : in   STD_LOGIC;
+    cs              : in    STD_LOGIC;
 
     --outputs
-    rdy         : out   STD_LOGIC;
+    rdy             : out   STD_LOGIC;
 
     -- to SDRAM controller
-    addr_out    : out   STD_LOGIC_VECTOR(15 downto 0);
-    wr_rd       : out   STD_LOGIC;
-    memstrb     : out   STD_LOGIC;
+    addr_out        : out   STD_LOGIC_VECTOR(15 downto 0);
+    wr_rd_out       : out   STD_LOGIC;
+    memstrb         : out   STD_LOGIC;
 
     -- to SRAM
-    addr_out2   : out  STD_LOGIC_VECTOR(7 downto 0);
-    wen         : out   STD_LOGIC;
+    addr_out2       : out  STD_LOGIC_VECTOR(7 downto 0);
+    wen             : out   STD_LOGIC;
 
     -- mux
-    din_mux     : out   STD_LOGIC;
-    dout_mux    : out   STD_LOGIC;
+    din_mux         : out   STD_LOGIC;
+    dout_mux        : out   STD_LOGIC;
   );
 end cache;
 
@@ -67,13 +68,19 @@ begin
   nextStateGen : process(state_current, rst, match16, match24, match30)
   begin
     if(state_current = "000")then     -- S0: Idle
-
+        -- cs probe
     elsif(state_current = "001")then  -- S1: Miss
-
+        -- 
     elsif(state_current = "010")then  -- S2: Dirty Miss 
 
     elsif(state_current = "011")then  -- S3: Hit
-
+        if (wr_rd_in = '1') then
+                
+                --write
+        else 
+                
+                -- read
+        end if;
     elsif(state_current = "100")then  -- S4: Read
 
     elsif(state_current = "101")then  -- S5: Write
@@ -87,7 +94,7 @@ begin
   outGen: process(state_current)
   begin
     if(state_current = "000")then     -- S0: Idle
-
+        
     elsif(state_current = "001")then  -- S1: Miss
 
     elsif(state_current = "010")then  -- S2: Dirty Miss
