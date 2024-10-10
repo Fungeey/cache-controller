@@ -26,7 +26,7 @@ entity cache is
 
     -- mux
     din_mux         : out   STD_LOGIC;
-    dout_mux        : out   STD_LOGIC;
+    dout_mux        : out   STD_LOGIC
   );
 end cache;
 
@@ -78,11 +78,11 @@ begin
   begin
     if(state_current = "000")then     -- S0: Idle
       -- compare if tags are same
-      if(tag == table_tag(to_integer(unsigned(index)))) then
+      if(tag = table_tag(to_integer(unsigned(index)))) then
         state_next <= "011"; -- Hit
       else 
         -- Check dirty bit
-        if(table_dirty(to_integer(unsigned(index))) == '0') then
+        if(table_dirty(to_integer(unsigned(index))) = '0') then
           state_next <= "001"; -- Miss
         else
           state_next <= "010"; -- Dirty Miss
@@ -139,7 +139,7 @@ begin
       table_valid(to_integer(unsigned(index))) <= '1';
       addr_out2(7 downto 5) <= index;
       addr_out2(4 downto 0) <= "00000";
-      wr_rd_out <= '0' -- read
+      wr_rd_out <= '0'; -- read
       din_mux <= '1';
       wen <= '1';
     
