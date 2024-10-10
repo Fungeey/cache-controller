@@ -1,19 +1,21 @@
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.STD_LOGIC_ARITH.ALL;
+--use IEEE.STD_LOGIC_ARITH.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
+use IEEE.NUMERIC_STD.ALL;
 
 entity cache is 
+
 	Port(   -- the ports of the cache controller
     --inputs
     clk 		        : in    STD_LOGIC;
-	  rst		          : in    STD_LOGIC;
+    --rst		          : in    STD_LOGIC;
 	  addr_in		      : in 	  STD_LOGIC_VECTOR(15 downto 0);
-    wr_rd_in        : in   STD_LOGIC;
+    wr_rd_in        : in    STD_LOGIC;
     cs              : in    STD_LOGIC;
 
     --outputs
-    rdy             : out   STD_LOGIC;
+    rdy           : out   STD_LOGIC;
 
     -- to SDRAM controller
     addr_out1       : out   STD_LOGIC_VECTOR(15 downto 0);
@@ -21,7 +23,7 @@ entity cache is
     memstrb         : out   STD_LOGIC;
 
     -- to SRAM
-    addr_out2       : out  STD_LOGIC_VECTOR(7 downto 0);
+    addr_out2       : out   STD_LOGIC_VECTOR(7 downto 0);
     wen             : out   STD_LOGIC;
 
     -- mux
@@ -106,10 +108,13 @@ begin
 
     elsif(state_current = "100")then  -- S4: Read
       state_next <= "000";
+
     elsif(state_current = "101")then  -- S5: Write
       state_next <= "000";
+
     else                              
       state_next <= "000";            -- default / reset (idle)
+
     end if;
   end process;
 
@@ -117,10 +122,10 @@ begin
   outGen: process(state_current)
   begin
     if(state_current = "000") then     -- S0: Idle
-      ready <= '1';
+      rdy <= '1';
 
     elsif(state_current = "001") then  -- S1: Dirty Miss
-      ready <= '0';
+      rdy <= '0';
 
       -- on first run of this state: send offset as 0
       addr_out1(15 downto 8) <= tag;
@@ -134,7 +139,8 @@ begin
       -- repeat 32 times: send data from SRAM to SDRAM
 
     elsif(state_current = "010")then  -- S2: Miss
-      ready <= '0';
+      rdy <= '0';
+
       -- on first run of this state: send offset as 0
       table_valid(to_integer(unsigned(index))) <= '1';
       addr_out2(7 downto 5) <= index;
@@ -149,11 +155,11 @@ begin
       table_tag(to_integer(unsigned(index))) <= tag;
 
     elsif(state_current = "011")then  -- S3: Hit
-      ready <= '0';
+      rdy <= '0';
       -- shouldn't output anything
 
     elsif(state_current = "100")then  -- S4: Read
-      ready <= '0';
+      rdy <= '0';
 
       -- SRAM to CPU
       dout_mux <= '1';
@@ -163,7 +169,7 @@ begin
       addr_out2(4 downto 0) <= offset;
 
     elsif(state_current = "101")then  -- S5: Write
-      ready <= '0';
+      rdy <= '0';
 
       -- CPU to SRAM
       din_mux <= '0';
