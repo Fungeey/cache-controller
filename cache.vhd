@@ -54,6 +54,11 @@ architecture Behavioral of cache is --components and signals goes here
   signal state_current : std_logic_vector(2 downto 0) := "000";
   signal state_next : std_logic_vector(2 downto 0);
 
+  -- variables
+  signal counter : integer := 0; -- for SDRAM operations
+  --signal offset_inc : std_logic_vector (4 downto 0);
+  signal offset_inc : integer: := 0;
+
 -- COMPONENTS
 begin
 
@@ -93,11 +98,19 @@ begin
 
     elsif(state_current = "001")then  -- S1: Dirty Miss
       -- don't move on until finished data transfer
-      state_next <= "010"; -- go into miss
+      if (counter >= 64) then
+        state_next <= "010"; -- go into miss
+        counter <= 0;
+        offset_inc <= 0;
+      end if;
 
     elsif(state_current = "010")then  -- S2: Miss 
       -- don't move on until finished data transfer
-      state_next <= "011"; -- become hit  
+      if (counter >= 64) then
+        state_next <= "011"; -- become hit  
+        counter <= 0;
+        offset_inc <= 0;
+      end if
 
     elsif(state_current = "011")then  -- S3: Hit
         if (wr_rd_in = '1') then      
@@ -128,29 +141,63 @@ begin
       rdy <= '0';
 
       -- on first run of this state: send offset as 0
-      addr_out1(15 downto 8) <= tag;
+      -- these variables are static or they dont change
+      addr_out1(15 downto 8) <= tag; -- tag miss must write into SDRAM controller
       addr_out1(7 downto 5) <= index;
-      addr_out1(4 downto 0) <= "00000";
+      addr_out2(7 downto 5) <= index;
       wr_rd_out <= '1'; -- write
       dout_mux <= '0';
-      din_mux <= '1';
+      din_mux <= '1'; -- do we need this
       wen <= '0';
 
       -- repeat 32 times: send data from SRAM to SDRAM
+        if (counter <= 64 ) then --event every 2 clock cycles x 32 times (words)
+          if (counter mod 2 = 0) -- operation
+            memstrb <= 1
+            
+            --the indices remains the same (same row). the offset changes (going through the columns)
+            addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
+            addr_out2(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
+        
+          else -- mod 2 = 1
+            memstrb <= 0;
+
+          end if
+          offset_inc <= offset_inc + 1
+        end if
+
 
     elsif(state_current = "010")then  -- S2: Miss
       rdy <= '0';
 
       -- on first run of this state: send offset as 0
       table_valid(to_integer(unsigned(index))) <= '1';
+      --addr_out2(7 downto 5) <= index;
+      --addr_out2(4 downto 0) <= "00000";
+      addr_out1(15 downto 8) <= tag; -- tag miss must write into SDRAM controller
+      addr_out1(7 downto 5) <= index;
       addr_out2(7 downto 5) <= index;
-      addr_out2(4 downto 0) <= "00000";
       wr_rd_out <= '0'; -- read
       din_mux <= '1';
       wen <= '1';
     
       -- repeat 32 times: wait for MSTRB high, then store data from SDRAM into SRAM
+      -- repeat 32 times: send data from SDRAM TO SRAM
+      if (counter <= 64 ) then --event every 2 clock cycles x 32 times (words)
+        if (counter mod 2 = 0) -- operation 
+          memstrb <= 1
+          
+          --the Controller tells SDRAM the tag + index and SRAM the index
+          --and the offset to both which increments 
+          addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
+          addr_out2(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
+        
+        else -- mod 2 = 1
+          memstrb <= 0;
 
+        end if
+        offset_inc <= offset_inc + 1
+      end if
       -- once done, update tag in the table
       table_tag(to_integer(unsigned(index))) <= tag;
 
