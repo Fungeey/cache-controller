@@ -156,7 +156,7 @@ begin
             memstrb <= 1
             
             --the indices remains the same (same row). the offset changes (going through the columns)
-            addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
+            addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5)); -- int to unsigned(value,size)
             addr_out2(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
         
           else -- mod 2 = 1
