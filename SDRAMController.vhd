@@ -23,7 +23,7 @@ architecture Behavioral of SDRAMController is
 type memory_block is array (7 downto 0, 31 downto 0) of std_logic_vector(7 downto 0);
 --the cache has 8 row of 32 words. each word is 1 byte or 8 bits
 
-signal memory_signal: std_logic_vector(7 downtp 0); -- word
+signal memory_signal: std_logic_vector(7 downto 0); -- word
 
 begin
 
