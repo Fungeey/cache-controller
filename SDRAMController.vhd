@@ -30,11 +30,11 @@ begin
       if (clk'event and clk = '1' and memstrb ='1') then -- event
         if (wr_rd ='1') then
           --write
-			    sram(to_integer(unsigned(addr_in(7 downto 5))), to_intege(unsigned(addr_in(4 downto 0)))) <= din;
+			    sram(to_integer(unsigned(addr_in(7 downto 5))), to_integer(unsigned(addr_in(4 downto 0)))) <= din;
 
         else -- wr_rd = 0
           --read
-          dout <= sram(to_integer(unsigned(addr_in(7 downto 5))), to_intege(unsigned(addr_in(4 downto 0))));
+          dout <= sram(to_integer(unsigned(addr_in(7 downto 5))), to_integer(unsigned(addr_in(4 downto 0))));
 
         --memstrb = 0 nothing happens
       end if

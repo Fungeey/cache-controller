@@ -83,7 +83,7 @@ begin
   -- FSM: Next state generation.
   nextStateGen : process(state_current, tag, index, offset)
   begin
-    if(state_current = "000")then     -- S0: Idle
+    if(state_current = "000") then     -- S0: Idle
       -- compare if tags are same
       if(tag = table_tag(to_integer(unsigned(index)))) then
         state_next <= "011"; -- Hit
@@ -96,33 +96,33 @@ begin
         end if;
       end if;
 
-    elsif(state_current = "001")then  -- S1: Dirty Miss
+    elsif(state_current = "001") then  -- S1: Dirty Miss
       -- don't move on until finished data transfer
-      if (counter >= 64) then
+      if (counter > 64) then
         state_next <= "010"; -- go into miss
         counter <= 0;
         offset_inc <= 0;
       end if;
 
-    elsif(state_current = "010")then  -- S2: Miss 
+    elsif(state_current = "010") then  -- S2: Miss 
       -- don't move on until finished data transfer
-      if (counter >= 64) then
+      if (counter > 64) then
         state_next <= "011"; -- become hit  
         counter <= 0;
         offset_inc <= 0;
       end if
 
-    elsif(state_current = "011")then  -- S3: Hit
+    elsif(state_current = "011") then  -- S3: Hit
         if (wr_rd_in = '1') then      
           state_next <= "101"; -- write
         else 
           state_next <= "100"; -- read
         end if;
 
-    elsif(state_current = "100")then  -- S4: Read
+    elsif(state_current = "100") then  -- S4: Read
       state_next <= "000";
 
-    elsif(state_current = "101")then  -- S5: Write
+    elsif(state_current = "101") then  -- S5: Write
       state_next <= "000";
 
     else                              
@@ -140,64 +140,77 @@ begin
     elsif(state_current = "001") then  -- S1: Dirty Miss
       rdy <= '0';
 
-      -- on first run of this state: send offset as 0
-      -- these variables are static or they dont change
-      addr_out1(15 downto 8) <= tag; -- tag miss must write into SDRAM controller
-      addr_out1(7 downto 5) <= index;
-      addr_out2(7 downto 5) <= index;
-      wr_rd_out <= '1'; -- write
-      dout_mux <= '0';
-      din_mux <= '1'; -- do we need this
-      wen <= '0';
+      if(counter = 0) then
+        -- on first run of this state: send offset as 0
+        -- these variables are static or they dont change
+
+        -- tag miss must write into SDRAM controller
+        addr_out1(15 downto 8) <= tag; 
+        addr_out1(7 downto 5) <= index;
+        addr_out2(7 downto 5) <= index;
+        addr_out2(4 downto 0) <= "00000";
+        
+        wr_rd_out <= '1'; -- write
+        dout_mux <= '0';
+        -- din_mux <= '1'; -- do we need this
+        wen <= '0';
 
       -- repeat 32 times: send data from SRAM to SDRAM
-        if (counter <= 64 ) then --event every 2 clock cycles x 32 times (words)
-          if (counter mod 2 = 0) -- operation
-            memstrb <= 1
-            
-            --the indices remains the same (same row). the offset changes (going through the columns)
-            addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5)); -- int to unsigned(value,size)
-            addr_out2(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
-        
-          else -- mod 2 = 1
-            memstrb <= 0;
+      else if (counter <= 64 ) then --event every 2 clock cycles x 32 times (words)
+        if (counter mod 2 = 0) -- operation
+          memstrb <= 1;
+          
+          --the indices remains the same (same row). the offset changes (going through the columns)
+          -- int to unsigned(value,size)
 
-          end if
-          offset_inc <= offset_inc + 1
+          addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5)); 
+          addr_out2(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
+          offset_inc <= offset_inc + 1;
+      
+        else -- mod 2 = 1
+          memstrb <= 0;
+
         end if
+        counter <= counter + 1;
+      end if
 
-
-    elsif(state_current = "010")then  -- S2: Miss
+    elsif(state_current = "010") then  -- S2: Miss
       rdy <= '0';
 
-      -- on first run of this state: send offset as 0
-      table_valid(to_integer(unsigned(index))) <= '1';
-      --addr_out2(7 downto 5) <= index;
-      --addr_out2(4 downto 0) <= "00000";
-      addr_out1(15 downto 8) <= tag; -- tag miss must write into SDRAM controller
-      addr_out1(7 downto 5) <= index;
-      addr_out2(7 downto 5) <= index;
-      wr_rd_out <= '0'; -- read
-      din_mux <= '1';
-      wen <= '1';
-    
-      -- repeat 32 times: wait for MSTRB high, then store data from SDRAM into SRAM
-      -- repeat 32 times: send data from SDRAM TO SRAM
-      if (counter <= 64 ) then --event every 2 clock cycles x 32 times (words)
+      if(counter = 0) then
+        -- on first run of this state: send offset as 0
+        table_valid(to_integer(unsigned(index))) <= '1';
+
+        -- tag miss must write into SDRAM controller
+        addr_out1(15 downto 8) <= tag; 
+        addr_out1(7 downto 5) <= index;
+        addr_out2(7 downto 5) <= index;
+        addr_out2(4 downto 0) <= "00000";
+
+        wr_rd_out <= '0'; -- read
+        din_mux <= '1';
+        wen <= '1';
+      
+      else if (counter <= 64) then 
+        --event every 2 clock cycles x 32 times (words)
+        -- repeat 32 times: wait for MSTRB high, then store data from SDRAM into SRAM
+        -- repeat 32 times: send data from SDRAM TO SRAM
         if (counter mod 2 = 0) -- operation 
-          memstrb <= 1
+          memstrb <= 1;
           
           --the Controller tells SDRAM the tag + index and SRAM the index
           --and the offset to both which increments 
           addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
           addr_out2(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
-        
+          offset_inc <= offset_inc + 1;
+
         else -- mod 2 = 1
           memstrb <= 0;
 
         end if
-        offset_inc <= offset_inc + 1
+        counter <= counter + 1;
       end if
+
       -- once done, update tag in the table
       table_tag(to_integer(unsigned(index))) <= tag;
 
