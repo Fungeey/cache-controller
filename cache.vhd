@@ -63,7 +63,6 @@ architecture Behavioral of cache is --components and signals goes here
       --inputs
       clk 		      : in    STD_LOGIC;
       rst		        : in    STD_LOGIC; -- do we need
-    
       addr_in		    : in 	STD_LOGIC_VECTOR(15 downto 0);
       wr_rd         : in    STD_LOGIC;
       din           : in    STD_LOGIC_VECTOR(7 downto 0);
@@ -71,19 +70,18 @@ architecture Behavioral of cache is --components and signals goes here
     );
     end component;    
 
-  end component;  
   component icon
     PORT (
     CONTROL0 : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0);
-    CONTROL1 : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0));
+    CONTROL1 : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0)); -- control 1 do we need
   end component;
     
   component ila
     PORT (
     CONTROL : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0);
     CLK : IN STD_LOGIC;
-    DATA : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
-    TRIG0 : IN STD_LOGIC_VECTOR(7 DOWNTO 0));
+    DATA : IN STD_LOGIC_VECTOR(31 DOWNTO 0); -- edit
+    TRIG0 : IN STD_LOGIC_VECTOR(7 DOWNTO 0)); -- edit
   end component;
 
   component vio
@@ -301,4 +299,8 @@ begin
 
     end if;
   end process;
+
+  --signals
+  
+
 end Behavioral;
