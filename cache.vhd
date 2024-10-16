@@ -56,19 +56,19 @@ architecture Behavioral of cache is --components and signals goes here
       cs 		        : out  STD_LOGIC;
       DOut 		      : out  STD_LOGIC_VECTOR (7 downto 0)
     );
-    end component;
+  end component;
 
-    component SRAM -- the ports of the SRAM controller
-    Port    (   
-      --inputs
-      clk 		      : in    STD_LOGIC;
-      rst		        : in    STD_LOGIC; -- do we need
-      addr_in		    : in 	STD_LOGIC_VECTOR(15 downto 0);
-      wr_rd         : in    STD_LOGIC;
-      din           : in    STD_LOGIC_VECTOR(7 downto 0);
-      dout          : out   STD_LOGIC_VECTOR(7 downto 0)
-    );
-    end component;    
+  component SRAM -- the ports of the SRAM controller
+  Port    (   
+    --inputs
+    clk 		      : in    STD_LOGIC;
+    rst		        : in    STD_LOGIC; -- do we need
+    addr_in		    : in 	STD_LOGIC_VECTOR(15 downto 0);
+    wr_rd         : in    STD_LOGIC;
+    din           : in    STD_LOGIC_VECTOR(7 downto 0);
+    dout          : out   STD_LOGIC_VECTOR(7 downto 0)
+  );
+  end component;    
 
   component icon
     PORT (
