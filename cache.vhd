@@ -4,13 +4,13 @@ use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.STD_LOGIC_UNSIGNED.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
-entity cache is 
+entity cache is
 
-	Port(   -- the ports of the cache controller
+Port(   -- the ports of the cache controller
     --inputs
-    clk 		        : in    STD_LOGIC;
-    --rst		          : in    STD_LOGIC;
-	  addr_in		      : in 	  STD_LOGIC_VECTOR(15 downto 0);
+    clk        : in    STD_LOGIC;
+    --rst          : in    STD_LOGIC;
+    addr_in      : in  STD_LOGIC_VECTOR(15 downto 0);
     wr_rd_in        : in    STD_LOGIC;
     cs              : in    STD_LOGIC;
 
@@ -59,52 +59,79 @@ architecture Behavioral of cache is --components and signals goes here
   end component;
 
   component SRAM -- the ports of the SRAM controller
-  Port    (   
+    Port(  
     --inputs
-    clk 		      : in    STD_LOGIC;
-    rst		        : in    STD_LOGIC; -- do we need
-    addr_in		    : in 	STD_LOGIC_VECTOR(15 downto 0);
-    wr_rd         : in    STD_LOGIC;
-    din           : in    STD_LOGIC_VECTOR(7 downto 0);
-    dout          : out   STD_LOGIC_VECTOR(7 downto 0)
-  );
-  end component;    
+    clk : in    STD_LOGIC;
+    rst    : in    STD_LOGIC;
+
+    addr_in : in STD_LOGIC_VECTOR(15 downto 0);
+    wr_rd       : in    STD_LOGIC;
+    memstrb     : in    STD_LOGIC;
+    din         : in    STD_LOGIC_VECTOR(7 downto 0);
+    dout        : out   STD_LOGIC_VECTOR(7 downto 0)
+    );
+  end component;
 
   component icon
     PORT (
     CONTROL0 : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0);
-    CONTROL1 : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0)); -- control 1 do we need
+    CONTROL1 : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0)
+    ); -- control 1 do we need
   end component;
-    
+
   component ila
     PORT (
-    CONTROL : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0);
-    CLK : IN STD_LOGIC;
-    DATA : IN STD_LOGIC_VECTOR(31 DOWNTO 0); -- edit
-    TRIG0 : IN STD_LOGIC_VECTOR(7 DOWNTO 0)); -- edit
+        CONTROL : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0);
+        CLK : IN STD_LOGIC;
+        DATA : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
+        TRIG0 : IN STD_LOGIC_VECTOR(7 DOWNTO 0)
+    );
   end component;
 
-  component vio
+  component vio -- board inputs / outputs
     PORT (
     CONTROL : INOUT STD_LOGIC_VECTOR(35 DOWNTO 0);
-    ASYNC_OUT : OUT STD_LOGIC_VECTOR(17 DOWNTO 0));
+    ASYNC_OUT : OUT STD_LOGIC_VECTOR(17 DOWNTO 0)
+    );
   end component;
 
+  COMPONENT bram
+    PORT (
+        clka : IN STD_LOGIC;
+        wea : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+        addra : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+        dina : IN STD_LOGIC_VECTOR(7 DOWNTO 0);
+        douta : OUT STD_LOGIC_VECTOR(7 DOWNTO 0)
+    );
+  END COMPONENT;
+
 -- SIGNALS
+
+  -- chipscope
+  signal control0 : std_logic_vector(35 downto 0);
+  signal control1 : std_logic_vector(35 downto 0);
+  signal ila_data : std_logic_vector(31 downto 0);
+  signal trig0 : std_logic_vector(7 downto 0);
+  signal vio_out : std_logic_vector(17 downto 0);
+
+  signal bram_addr : std_logic_vector(7 downto 0);
+  signal bram_din, bram_dout : std_logic_vector(7 downto 0);
+  signal bram_wen : std_logic_vector (0 downto 0);
+
   -- Address Decoder
   signal tag    : std_logic_vector(15 downto 8);
   signal index  : std_logic_vector(7 downto 5);
   signal offset : std_logic_vector(4 downto 0);
 
   -- Local SRAM Table (stores 32 1-byte words)
-  type index_array is array (0 to 8) of std_logic_vector(2 downto 0);
+  type index_array is array (0 to 7) of std_logic_vector(2 downto 0);
   signal table_index  : index_array;
 
-  type tag_array is array (0 to 8) of std_logic_vector(8 downto 0);
+  type tag_array is array (0 to 7) of std_logic_vector(7 downto 0);
   signal table_tag    : tag_array;
 
-  signal table_valid  : std_logic_vector(8 downto 0);
-  signal table_dirty  : std_logic_vector(8 downto 0);
+  signal table_valid  : std_logic_vector(7 downto 0);
+  signal table_dirty  : std_logic_vector(7 downto 0);
 
   -- FSM control unit
   signal state_current : std_logic_vector(2 downto 0) := "000";
@@ -113,10 +140,41 @@ architecture Behavioral of cache is --components and signals goes here
   -- variables
   signal counter : integer := 0; -- for SDRAM operations
   --signal offset_inc : std_logic_vector (4 downto 0);
-  signal offset_inc : integer: := 0;
+  signal offset_inc : integer := 0;
+  signal done : std_logic := '0';
 
 -- COMPONENTS
 begin
+
+  sys_icon : icon
+  port map (
+  CONTROL0 => control0,
+  CONTROL1 => control1
+  );
+
+  sys_ila : ila
+  port map (
+  CONTROL => control0,
+  CLK => clk,
+  DATA => ila_data,
+  TRIG0 => trig0
+  );
+
+  system_vio : vio
+  port map (
+  CONTROL => control1,
+  ASYNC_OUT => vio_out
+  );
+
+  -- Block Ram
+  system_bram : bram
+  PORT MAP (
+  clka => clk,
+  wea => bram_wen,
+  addra => bram_addr,
+  dina => bram_din,
+  douta => bram_dout
+  );
 
   -- address decoder
   addressDecoder: process(addr_in, cs)
@@ -143,7 +201,7 @@ begin
       -- compare if tags are same
       if(tag = table_tag(to_integer(unsigned(index)))) then
         state_next <= "011"; -- Hit
-      else 
+      else
         -- Check dirty bit
         if(table_dirty(to_integer(unsigned(index))) = '0') then
           state_next <= "001"; -- Miss
@@ -154,24 +212,20 @@ begin
 
     elsif(state_current = "001") then  -- S1: Dirty Miss
       -- don't move on until finished data transfer
-      if (counter > 64) then
+      if (done = '1') then
         state_next <= "010"; -- go into miss
-        counter <= 0;
-        offset_inc <= 0;
       end if;
 
-    elsif(state_current = "010") then  -- S2: Miss 
+    elsif(state_current = "010") then  -- S2: Miss
       -- don't move on until finished data transfer
-      if (counter > 64) then
-        state_next <= "011"; -- become hit  
-        counter <= 0;
-        offset_inc <= 0;
-      end if
+      if (done = '1') then
+        state_next <= "011"; -- become hit
+      end if;
 
     elsif(state_current = "011") then  -- S3: Hit
         if (wr_rd_in = '1') then      
           state_next <= "101"; -- write
-        else 
+        else
           state_next <= "100"; -- read
         end if;
 
@@ -201,34 +255,41 @@ begin
         -- these variables are static or they dont change
 
         -- tag miss must write into SDRAM controller
-        addr_out1(15 downto 8) <= tag; 
+        addr_out1(15 downto 8) <= tag;
         addr_out1(7 downto 5) <= index;
         addr_out2(7 downto 5) <= index;
         addr_out2(4 downto 0) <= "00000";
-        
+ 
+ offset_inc <= 0;
+ done <= '0';
+       
         wr_rd_out <= '1'; -- write
         dout_mux <= '0';
         -- din_mux <= '1'; -- do we need this
         wen <= '0';
+ counter <= 1;
 
       -- repeat 32 times: send data from SRAM to SDRAM
-      else if (counter <= 64 ) then --event every 2 clock cycles x 32 times (words)
-        if (counter mod 2 = 0) -- operation
-          memstrb <= 1;
-          
+      elsif (counter <= 64) then --event every 2 clock cycles x 32 times (words)
+        if (counter mod 2 = 0) then -- operation
+          memstrb <= '1';
+         
           --the indices remains the same (same row). the offset changes (going through the columns)
           -- int to unsigned(value,size)
 
-          addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5)); 
+          addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
           addr_out2(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
           offset_inc <= offset_inc + 1;
-      
+     
         else -- mod 2 = 1
-          memstrb <= 0;
+          memstrb <= '0';
 
-        end if
+        end if;
         counter <= counter + 1;
-      end if
+elsif (counter > 64) then
+done <= '1';
+counter <= 0;
+      end if;
 
     elsif(state_current = "010") then  -- S2: Miss
       rdy <= '0';
@@ -238,34 +299,41 @@ begin
         table_valid(to_integer(unsigned(index))) <= '1';
 
         -- tag miss must write into SDRAM controller
-        addr_out1(15 downto 8) <= tag; 
+        addr_out1(15 downto 8) <= tag;
         addr_out1(7 downto 5) <= index;
         addr_out2(7 downto 5) <= index;
         addr_out2(4 downto 0) <= "00000";
+ 
+ offset_inc <= 0;
+ done <= '0';
 
         wr_rd_out <= '0'; -- read
         din_mux <= '1';
         wen <= '1';
-      
-      else if (counter <= 64) then 
+ counter <= 1;
+     
+      elsif (counter <= 64) then
         --event every 2 clock cycles x 32 times (words)
         -- repeat 32 times: wait for MSTRB high, then store data from SDRAM into SRAM
         -- repeat 32 times: send data from SDRAM TO SRAM
-        if (counter mod 2 = 0) -- operation 
-          memstrb <= 1;
-          
+        if (counter mod 2 = 0) then -- operation
+          memstrb <= '1';
+         
           --the Controller tells SDRAM the tag + index and SRAM the index
-          --and the offset to both which increments 
+          --and the offset to both which increments
           addr_out1(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
           addr_out2(4 downto 0) <= STD_LOGIC_VECTOR(to_unsigned(offset_inc, 5));
           offset_inc <= offset_inc + 1;
 
         else -- mod 2 = 1
-          memstrb <= 0;
+          memstrb <= '0';
 
-        end if
+        end if;
         counter <= counter + 1;
-      end if
+elsif (counter > 64) then
+done <= '1';
+counter <= 0;
+      end if;
 
       -- once done, update tag in the table
       table_tag(to_integer(unsigned(index))) <= tag;
@@ -299,8 +367,4 @@ begin
 
     end if;
   end process;
-
-  --signals
-  
-
 end Behavioral;
